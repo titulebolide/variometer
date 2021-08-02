@@ -26,7 +26,7 @@ with open(output_readme, 'w') as f:
                 f.write(line)
                 continue
             new_line = line[:eq_beggining]
-            new_line += '<img src="https://render.githubusercontent.com/render/math?math={}" style="background:white;padding:4px;">'.format(
+            new_line += '<img src="https://render.githubusercontent.com/render/math?math=\\color{{grey}}{}" style="color:white;background:white;padding:4px;">'.format(
                 line[eq_beggining+1:eq_ending]
             )
             new_line += line[eq_ending+1:]
