@@ -1,3 +1,5 @@
+import urllib.parse
+
 input_readme = "test/READMERAW.md"
 output_readme = "test/README.md"
 
@@ -26,8 +28,8 @@ with open(output_readme, 'w') as f:
                 f.write(line)
                 continue
             new_line = line[:eq_beggining]
-            new_line += '<img src="https://render.githubusercontent.com/render/math?math=\\color{{grey}}{}" style="color:white;background:white;padding:4px;">'.format(
-                line[eq_beggining+1:eq_ending]
+            new_line += '<img src="https://render.githubusercontent.com/render/math?math=\\color{{blue}}{}">'.format(
+                urllib.parse.quote_plus(line[eq_beggining+1:eq_ending])
             )
             new_line += line[eq_ending+1:]
             f.write(new_line)
