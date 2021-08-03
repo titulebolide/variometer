@@ -66,7 +66,7 @@ for t in time:
     Pkkm = F(X,U)@P@F(X,U).transpose() + Q
     v = Z - h(Xkkm)
     S = H(Xkkm)@Pkkm@H(Xkkm).transpose() + R
-    K = P@H(Xkkm).transpose()@np.linalg.inv(S)
+    K = Pkkm@H(Xkkm).transpose()@np.linalg.inv(S)
     X = Xkkm + K@v
     P = Pkkm - K@H(Xkkm)@Pkkm
 
