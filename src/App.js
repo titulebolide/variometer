@@ -21,6 +21,8 @@ import { barometer, accelerometer, setUpdateIntervalForType, SensorTypes } from 
 
 import { create, all } from 'mathjs'
 
+import Tone from "react-native-tone-android";
+
 const config = { }
 const math = create(all, config)
 
@@ -33,55 +35,88 @@ setUpdateIntervalForType(SensorTypes.barometer, dt*1000);
 
 class App extends React.Component {
 
-  state = {vz:0}
+  state = {vz:0, step:"Initializing"}
   sendData = true
   acc = [0,0,0]
   press = 0
+  g_const = 0
+  initial_p = 0
+  runningState = 0 //0 for initializing, 1 for ending initializing, 2 for can begin
+  nb_init_a = 0
+  nb_init_p = 0
+  playTone = true
+  subscriptions = []
+  intervals = []
+  stopTone = false
+  U = false
+  Z = false
+  X = false
+  f = false
+  F = false
+  h = false
+  H = false
+  P = false
+  Q = false
+  R = false
 
-  f = (X,U) => math.matrix([
-    [X.get([0,0]) + dt*U.get([0,0])],
-    [X.get([1,0]) + dt*beta*(X.get([2,0]) - X.get([1,0]))],
-    [X.get([2,0]) - dt*alpha*X.get([0,0])]
-  ])
+  initKalman = () => {
+    this.f = (X,U) => math.matrix([
+      [X.get([0,0]) + dt*U.get([0,0])],
+      [X.get([1,0]) + dt*beta*(X.get([2,0]) - X.get([1,0]))],
+      [X.get([2,0]) - dt*alpha*X.get([0,0])]
+    ])
 
-  F = (X,U) => math.matrix([
-    [1, 0, 0],
-    [0, 1-dt*beta, dt*beta],
-    [-dt*alpha, 0, 1]
-  ])
+    this.F = (X,U) => math.matrix([
+      [1, 0, 0],
+      [0, 1-dt*beta, dt*beta],
+      [-dt*alpha, 0, 1]
+    ])
 
-  h = (X) => math.matrix([
-    [X.get([1,0])]
-  ])
+    this.h = (X) => math.matrix([
+      [X.get([1,0])]
+    ])
 
-  H = (X) => math.matrix([
-    [0,1,0]
-  ])
+    this.H = (X) => math.matrix([
+      [0,1,0]
+    ])
 
-  X = math.matrix([
-      [0],
-      [84300],
-      [84300]
-  ])
-  P = math.matrix([
-      [0.2,0,0],
-      [0,10,0],
-      [0,0,10]
-  ])
-  P = math.square(this.P)
-  Q = math.matrix([
-      [0.2,0,0],
-      [0,10,0],
-      [0,0,10]
-  ])
-  Q = math.square(this.Q)
-  R = math.matrix([
-      [10]
-  ])
-  R = math.square(this.R)
+    this.X = math.matrix([
+        [0],
+        [this.initial_p],
+        [this.initial_p]
+    ])
+    this.P = math.matrix([
+        [0.2,0,0],
+        [0,1,0],
+        [0,0,1]
+    ])
+    this.P = math.square(this.P)
+    this.Q = math.matrix([
+        [0.5,0,0],
+        [0,1,0],
+        [0,0,1]
+    ])
+    this.Q = math.square(this.Q)
+    this.R = math.matrix([
+        [2]
+    ])
+    this.R = math.square(this.R)
 
-  U = math.matrix([[0]])
-  Z = math.matrix([[84300]])
+    this.U = math.matrix([[0]])
+    this.Z = math.matrix([[this.initial_p]])
+    this.intervals.push(
+      setInterval(this.kalmanIteration, dt*1000)
+    )
+    this.intervals.push(
+      setInterval(this.printX, 100)
+    )
+    if (this.playTone) {
+      setTimeout(this.tonePlayer,1)
+    }
+    this.runningState = 2
+  }
+
+
 
   kalmanIteration = () => {
 
@@ -153,38 +188,79 @@ class App extends React.Component {
     }
   }
 
+  tonePlayer = () => {
+    let vz = this.X.get([0,0])
+    let inter = 300 - 130*vz
+    if (vz >= 0.1) {
+      Tone.play(500 + 300*vz, inter)
+    }
+    if (this.stopTone) {
+      this.stopTone = false
+      return
+    }
+    setTimeout(this.tonePlayer,inter*2)
+
+  }
+
   componentDidMount = () => {
-    this.subbaro = barometer.subscribe(({ pressure }) => {
-      this.press = pressure*100
-      this.Z.subset(math.index(0,0), pressure*100)
-    });
+    this.subscriptions.push(
+      barometer.subscribe(({ pressure }) => {
+        if(this.runningState == 2) {
+          this.press = pressure*100
+          this.Z.subset(math.index(0,0), pressure*100)
+        } else if (this.runningState == 0) {
+          this.nb_init_p += 1
+          this.initial_p += pressure*100
+        }
+      })
+    )
 
-    this.subacc = accelerometer.subscribe(({ x, y, z, timestamp }) => {
-      this.acc = [x,y,z-9.88]
-      this.U.subset(math.index(0,0), z-9.88)
-    });
+    this.subscriptions.push(
+      accelerometer.subscribe(({ x, y, z, timestamp }) => {
+        if (this.runningState == 2) {
+          this.acc = [x,y,z-this.g_const]
+          this.U.subset(math.index(0,0), Math.sqrt(x*x+y*y+z*z)-this.g_const)
+        } else if (this.runningState == 0) {
+          this.nb_init_a += 1
+          this.g_const += Math.sqrt(x*x+y*y+z*z)
+          if (this.nb_init_a > 50 && this.nb_init_p > 50) {
+            this.runningState = 1
+            this.g_const /= this.nb_init_a
+            this.initial_p /= this.nb_init_p
+            this.initKalman()
+            this.setState({step:"Running"})
+          }
+        }
+      })
+    )
+  }
 
-    setInterval(this.kalmanIteration, dt*1000)
-    setInterval(this.printX, 100)
-
-
-
+  componentWillUnmount = () => {
+    for (sub of this.subscriptions) {
+      sub.unsubscribe()
+    }
+    for (inter of this.intervals) {
+      clearInterval(inter)
+    }
   }
 
   render = () => {
     return (
       <>
       <Text>
+        {this.state.step}
+      </Text>
+      <Text>
         {this.state.vz}
       </Text>
       <Text>
-        {this.U.get([0,0])}
+        {this.U && this.U.get([0,0])}
       </Text>
       <Text>
-        {this.Z.get([0,0])}
+        {this.Z && this.Z.get([0,0])}
       </Text>
       <Text>
-        {this.P.get([0,0])}
+        {this.P && this.P.get([0,0])}
       </Text>
       </>
     )

@@ -5159,6 +5159,11 @@ react-native-sensors@^7.1.0:
   dependencies:
     rxjs ">= 6"
 
+react-native-tone-android@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/react-native-tone-android/-/react-native-tone-android-1.0.2.tgz#cee26ba830d2412eeed7749fbfff5009bd241d19"
+  integrity sha512-dgoONNJIh9tXyHXU6qvh+RpYxl70dEYGdIIlAgjPprGylB5b95SgdlSFJFEVGHVf9gASIzt+C1ksYybOpyLi9Q==
+
 react-native-usb@^0.1.1:
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/react-native-usb/-/react-native-usb-0.1.1.tgz#1adce904513adc75ba9fe35983223897921c1f95"
