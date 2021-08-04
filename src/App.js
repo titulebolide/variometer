@@ -34,6 +34,9 @@ setUpdateIntervalForType(SensorTypes.barometer, dt*1000);
 class App extends React.Component {
 
   state = {vz:0}
+  sendData = true
+  acc = [0,0,0]
+  press = 0
 
   f = (X,U) => math.matrix([
     [X.get([0,0]) + dt*U.get([0,0])],
@@ -132,19 +135,39 @@ class App extends React.Component {
 
   printX = () => {
     this.setState({vz:this.X.get([0,0])})
+    if (this.sendData) {
+      data = {
+        acc : this.acc,
+        press : this.press
+      }
+      fetch(
+        "http://192.168.43.241:7998/",
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+          headers: "Content-Type: application/json"
+        }
+      ).catch((error) => {
+        return
+      });
+    }
   }
 
   componentDidMount = () => {
     this.subbaro = barometer.subscribe(({ pressure }) => {
+      this.press = pressure*100
       this.Z.subset(math.index(0,0), pressure*100)
     });
 
-    this.subacc = accelerometer.subscribe(({ x, y, z, timestamp }) =>
-      this.U.subset(math.index(0,0), z-10.15)
-    );
+    this.subacc = accelerometer.subscribe(({ x, y, z, timestamp }) => {
+      this.acc = [x,y,z-9.88]
+      this.U.subset(math.index(0,0), z-9.88)
+    });
 
     setInterval(this.kalmanIteration, dt*1000)
     setInterval(this.printX, 100)
+
+
 
   }
 
