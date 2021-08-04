@@ -1,12 +1,12 @@
 import numpy as np
 
-def model(td):
+def model(td,dt):
     f = lambda X,U : np.array([
-        [X[0,0] + td.dt*X[1,0]],
-        [X[1,0] + td.dt*U[0,0]]
+        [X[0,0] + dt*X[1,0]],
+        [X[1,0] + dt*U[0,0]]
     ])
     F = lambda X,U : np.array([
-        [1, td.dt],
+        [1, dt],
         [0,     1]
     ])
     h = lambda X : np.array([

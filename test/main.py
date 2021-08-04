@@ -1,47 +1,22 @@
 import random
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
-
-class TestData:
-    def __init__(self):
-        self.z = 1000
-        self.zmin = 500
-        self.zmax = 1500
-        self.vz = 0
-        self.vzmin = -10
-        self.vzmax = 10
-        self.az = 0
-        self.az_capt = self.az
-        self.dt = 1/10
-        self.p = self.ztop(self.z)
-        self.p_capt = self.p
-        self.az_capt_std_dev = 0.1
-        self.p_capt_std_dev = 3
-
-    def walls(self,t):
-        return ((t-0.5)*2)**3
-
-    def ztop(self,z, tsea = 288):
-        return 101325*np.exp(-0.02897*9.81*z/8.314/tsea)
-
-    def ptoz(self,p, tsea = 288):
-        return - 8.314*tsea/0.02897/9.81*np.log(p/101325)
-
-    def update(self):
-        daz = random.random() - 0.5 - 0.1*self.walls((self.z-self.zmin)/(self.zmax-self.zmin))
-        daz = daz - self.az*0.2 - 0.05*self.walls((self.vz-self.vzmin)/(self.vzmax-self.vzmin))
-        self.az = self.az + self.dt*daz
-        self.vz = self.vz + self.dt*self.az
-        self.z = self.z + self.dt*self.vz
-        self.p = self.ztop(self.z)
-        self.p_capt = self.p_capt + self.dt*(self.p - self.p_capt) + np.random.normal(scale = self.p_capt_std_dev)
-        self.az_capt = self.az + np.random.normal(scale = self.az_capt_std_dev)
-
-td = TestData()
+import threading
+import flask
+from testdata import TestData
 
 from models.model9 import model, data_index
 
-f, F, h, H, X, P, Q, R, get_U_Z = model(td)
+app = flask.Flask(__name__)
+
+dt = 0.1
+
+U = np.array([[0]])
+Z = np.array([[0]])
+
+td = TestData()
+f, F, h, H, X, P, Q, R, _ = model(td,dt)
 
 z = []
 z_press_capt = []
@@ -54,13 +29,17 @@ p_capt = []
 Xs = []
 Ps = []
 
-time = np.arange(1,600,1/10)
+fig = plt.figure()
+axs = []
+for i in range(6):
+    axs.append(fig.add_subplot(2,3,i+1))
 
-
-
-for t in time:
-    ## Kalman
-    U,Z = get_U_Z(td)
+@app.route("/",methods=['POST'])
+def index():
+    global U,Z,X,F,f,P,Q,R,H,h,Xs,z,z_press_capt,vz,vz_press_capt,az,az_capt,p,p_capt,Ps,dt
+    data = flask.request.get_json(force=True)
+    U = np.array([[data["acc"][2]]])
+    Z = np.array([[data["press"]]])
 
     Xkkm = f(X,U)
     Pkkm = F(X,U)@P@F(X,U).transpose() + Q
@@ -74,60 +53,99 @@ for t in time:
     Xs.append(X.tolist())
     Ps.append(P.tolist())
 
-    z.append(td.z)
-    z_press_capt.append(td.ptoz(td.p_capt))
+    #az.append(td.az)
+    #az_capt.append(td.az_capt)
 
-    vz.append(td.vz)
-    if len(p_capt) == 0:
+    az_capt.append(data["acc"][2])
+    p_capt.append(data["press"])
+
+    #z.append(td.z)
+    z_press_capt.append(td.ptoz(p_capt[-1]))
+
+    #vz.append(td.vz)
+    if len(p_capt) < 2:
         vz_press_capt.append(0)
     else:
-        vz_press_capt.append((td.ptoz(td.p_capt) - td.ptoz(p_capt[-1]))/td.dt)
+        vz_press_capt.append((td.ptoz(p_capt[-1]) - td.ptoz(p_capt[-2]))/dt)
 
-    az.append(td.az)
-    az_capt.append(td.az_capt)
+    #p.append(td.p)
+    #p_capt.append(td.p_capt)
 
-    p.append(td.p)
-    p_capt.append(td.p_capt)
+    #td.update()
 
-    td.update()
+    return "", 200
 
-Xs = np.array(Xs)
-Ps = np.array(Ps)
 
-plt.subplot(231)
-plt.plot(time, z_press_capt, label="From pressure")
-if "z" in data_index : plt.plot(time, Xs[:,data_index["z"],0], label="Kalman")
-plt.plot(time, z, label='True')
-plt.legend()
-plt.title("Altitude")
+def animate(i):
+    global U,Z,X,F,f,P,Q,R,H,h,Xs,z,z_press_capt,vz,vz_press_capt,az,az_capt,p,p_capt,Ps,dt,axs
 
-plt.subplot(232)
-plt.plot(time, vz_press_capt, label="From pressure")
-if "vz" in data_index : plt.plot(time, Xs[:,data_index["vz"],0], label="Kalman")
-plt.plot(time, vz, label='True')
-plt.legend()
-plt.title("Vertical speed")
+    if len(Xs) == 0:
+        return
 
-plt.subplot(233)
-plt.plot(time, az_capt, label="Measurements")
-if "az" in data_index : plt.plot(time, Xs[:,data_index["az"],0], label="Kalman")
-plt.plot(time, az, label="True")
-plt.legend()
-plt.title("Vertical acceleration")
+    timewindow = 10
 
-plt.subplot(234)
-plt.plot(time, p_capt, label="Measurements")
-if "Pint" in data_index : plt.plot(time, Xs[:,data_index["Pint"],0], label="Kalman Inner Pressure")
-if "Pext" in data_index : plt.plot(time, Xs[:,data_index["Pext"],0], label="Kalman Outer Pressure")
-plt.plot(time, p, label="True")
-plt.legend()
-plt.title("Pressure")
+    nbpoints = int(timewindow/dt)
 
-plt.subplot(235)
-if "z" in data_index : plt.plot(time, np.sqrt(Ps[:,data_index["z"],data_index["z"]]))
-plt.title("Altitude standard dev")
+    Xsarr = np.array(Xs[-nbpoints:])
+    Psarr = np.array(Ps[-nbpoints:])
+    z_press_capt_arr = z_press_capt[-nbpoints:]
+    vz_press_capt_arr = vz_press_capt[-nbpoints:]
+    az_capt_arr = az_capt[-nbpoints:]
+    z_arr = z[-nbpoints:]
+    vz_arr = vz[-nbpoints:]
+    az_arr = az[-nbpoints:]
+    p_arr = p[-nbpoints:]
+    p_capt_arr = p_capt[-nbpoints:]
 
-plt.subplot(236)
-if "vz" in data_index : plt.plot(time, np.sqrt(Ps[:,data_index["vz"],data_index["vz"]]))
-plt.title("Vertical speed standard dev")
-plt.show()
+    time = np.array(list(range(len(Xs))))[-nbpoints:]*dt
+
+    for ax in axs:
+        ax.clear()
+
+    ax = axs[0]
+    if len(z_press_capt_arr) == len(time) : ax.plot(time, z_press_capt_arr, label="From pressure")
+    if "z" in data_index : ax.plot(time, Xsarr[:,data_index["z"],0], label="Kalman")
+    if len(z_arr) == len(time) : ax.plot(time, z_arr, label='True')
+    ax.legend()
+    ax.set_title("Altitude")
+
+    ax = axs[1]
+    if len(vz_press_capt_arr) == len(time) : ax.plot(time, vz_press_capt_arr, label="From pressure")
+    if "vz" in data_index : ax.plot(time, Xsarr[:,data_index["vz"],0], label="Kalman")
+    if len(vz_arr) == len(time) : ax.plot(time, vz_arr, label='True')
+    ax.legend()
+    ax.set_title("Vertical speed")
+
+    ax = axs[2]
+    if len(az_capt_arr) == len(time) : ax.plot(time, az_capt_arr, label="Measurements")
+    if "az" in data_index : ax.plot(time, Xsarr[:,data_index["az"],0], label="Kalman")
+    if "g" in data_index : ax.plot(time, Xsarr[:,data_index["g"],0], label="Gravty")
+    if len(az_arr) == len(time) : ax.plot(time, az_arr, label="True")
+    ax.legend()
+    ax.set_title("Vertical acceleration")
+
+    ax = axs[3]
+    if len(p_capt_arr) == len(time) : ax.plot(time, p_capt_arr, label="Measurements")
+    if "Pint" in data_index : ax.plot(time, Xsarr[:,data_index["Pint"],0], label="Kalman Inner Pressure")
+    if "Pext" in data_index : ax.plot(time, Xsarr[:,data_index["Pext"],0], label="Kalman Outer Pressure")
+    if len(p_arr) == len(time) : ax.plot(time, p_arr, label="True")
+    ax.legend()
+    ax.set_title("Pressure")
+
+    ax = axs[4]
+    if "z" in data_index : ax.plot(time, np.sqrt(Psarr[:,data_index["z"],data_index["z"]]))
+    ax.set_title("Altitude standard dev")
+
+    ax = axs[5]
+    if "vz" in data_index : ax.plot(time, np.sqrt(Psarr[:,data_index["vz"],data_index["vz"]]))
+    ax.set_title("Vertical speed standard dev")
+
+
+if __name__ == "__main__":
+    threading.Thread(
+        target = app.run,
+        args=("0.0.0.0", 7998)
+    ).start()
+
+    ani = animation.FuncAnimation(fig, animate, interval=500)
+    plt.show()

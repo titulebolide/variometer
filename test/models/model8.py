@@ -1,14 +1,14 @@
 import numpy as np
 
-def model(td):
+def model(td,dt):
     alpha = 100/8
     f = lambda X,U : np.array([
-        [X[0,0] + td.dt*U[0,0]],
-        [X[1,0] - td.dt*alpha*X[0,0]]
+        [X[0,0] + dt*U[0,0]],
+        [X[1,0] - dt*alpha*X[0,0]]
     ])
     F = lambda X,U : np.array([
         [1, 0],
-        [-td.dt*alpha, 1]
+        [-dt*alpha, 1]
     ])
     h = lambda X : np.array([
         [X[1,0]]

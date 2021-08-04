@@ -1,6 +1,6 @@
 import numpy as np
 
-def model(td):
+def model(td,dt):
     f = lambda X,U : np.array([
         [X[0,0]]
     ])
