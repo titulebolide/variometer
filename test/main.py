@@ -38,7 +38,8 @@ for i in range(6):
 def index():
     global U,Z,X,F,f,P,Q,R,H,h,Xs,z,z_press_capt,vz,vz_press_capt,az,az_capt,p,p_capt,Ps,dt
     data = flask.request.get_json(force=True)
-    U = np.array([[data["acc"][2]]])
+    print(data)
+    U = np.array([[data["acc"]]])
     Z = np.array([[data["press"]]])
 
     Xkkm = f(X,U)
@@ -56,7 +57,7 @@ def index():
     #az.append(td.az)
     #az_capt.append(td.az_capt)
 
-    az_capt.append(data["acc"][2])
+    az_capt.append(data["acc"])
     p_capt.append(data["press"])
 
     #z.append(td.z)
@@ -147,5 +148,5 @@ if __name__ == "__main__":
         args=("0.0.0.0", 7998)
     ).start()
 
-    ani = animation.FuncAnimation(fig, animate, interval=500)
+    ani = animation.FuncAnimation(fig, animate, interval=1500)
     plt.show()

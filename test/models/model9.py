@@ -2,7 +2,7 @@ import numpy as np
 
 def model(td,dt):
     alpha = 100/8
-    beta = 5
+    beta = 2
 
     f = lambda X,U : np.array([
         [X[0,0] + dt*U[0,0]],
@@ -26,18 +26,15 @@ def model(td,dt):
         [84300],
         [84300]
     ])
-    P = np.array([
-        [1.6,0,0],
-        [0,10,0],
-        [0,0,10]
-    ])**2
     Q = np.array([
-        [0.5,0,0],
-        [0,10,0],
-        [0,0,10]
+        [0.3,0,0],
+        [0,5,0],
+        [0,0,1]
     ])**2
+
+    P = np.copy(Q)
     R = np.array([
-        [2]
+        [1]
     ])**2
 
     def get_U_Z(td):
