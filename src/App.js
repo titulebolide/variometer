@@ -7,16 +7,7 @@
  */
 
 import React from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  Button,
-  useColorScheme,
-  View
-} from 'react-native';
+import { Text, Button } from 'react-native';
 
 import { barometer, accelerometer, setUpdateIntervalForType, SensorTypes } from "react-native-sensors";
 
@@ -26,9 +17,7 @@ import Tone from "react-native-tone-android";
 
 import Share from 'react-native-share';
 
-
 var RNFS = require('react-native-fs');
-
 
 import RNDisableBatteryOptimizationsAndroid from 'react-native-disable-battery-optimizations-android';
 
