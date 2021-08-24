@@ -26,7 +26,6 @@ RNDisableBatteryOptimizationsAndroid.isBatteryOptimizationEnabled().then((isEnab
     RNDisableBatteryOptimizationsAndroid.openBatteryModal();
   }
 });
-RNDisableBatteryOptimizationsAndroid.enableBackgroundServicesDialogue();
 
 const config = { }
 const math = create(all, config)
