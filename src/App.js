@@ -29,6 +29,17 @@ import Share from 'react-native-share';
 
 var RNFS = require('react-native-fs');
 
+
+import RNDisableBatteryOptimizationsAndroid from 'react-native-disable-battery-optimizations-android';
+
+RNDisableBatteryOptimizationsAndroid.isBatteryOptimizationEnabled().then((isEnabled)=>{
+  if(isEnabled){
+    RNDisableBatteryOptimizationsAndroid.openBatteryModal();
+  }
+});
+
+
+
 const config = { }
 const math = create(all, config)
 

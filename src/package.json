@@ -13,6 +13,7 @@
     "mathjs": "^9.4.4",
     "react": "17.0.1",
     "react-native": "0.64.2",
+    "react-native-disable-battery-optimizations-android": "^1.0.7",
     "react-native-fs": "^2.18.0",
     "react-native-sensors": "^7.1.0",
     "react-native-share": "^7.0.0",
