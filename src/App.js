@@ -251,7 +251,7 @@ class App extends React.Component {
           if (this.isRecording) {
             this.recordBuffer.push({
               "ts" : Date.now(),
-              "press" : pressure*100
+              "p" : pressure*100
             })
           }
         } else if (this.runningState == 0) {
@@ -271,7 +271,7 @@ class App extends React.Component {
           if (this.isRecording) {
             this.recordBuffer.push({
               "ts" : timestamp,
-              "acc" : Math.sqrt(x*x+y*y+z*z)-this.g_const
+              "a" : [x,y,z]
             })
           }
           if (this.runKalman) {
@@ -280,7 +280,7 @@ class App extends React.Component {
         } else if (this.runningState == 0) {
           this.nb_init_a += 1
           this.g_const += Math.sqrt(x*x+y*y+z*z)
-          if (this.nb_init_a > 10 && this.nb_init_p > 10) {
+          if (this.nb_init_a > 100 && this.nb_init_p > 100) {
             this.runningState = 1
             this.g_const /= this.nb_init_a
             this.initial_p /= this.nb_init_p
@@ -312,6 +312,7 @@ class App extends React.Component {
 
   toggleRecording = () => {
     if (this.isHandlingRecordToggle) return;
+    if (this.runningState !== 2) return;
     this.isHandlingRecordToggle = true
     if (this.isRecording) {
       let path = RNFS.DocumentDirectoryPath + '/record_' + Date.now() + '.json'
@@ -331,6 +332,11 @@ class App extends React.Component {
       this.setState({recordButtonText : "Stop recording"})
       this.isRecording = true;
       this.isHandlingRecordToggle = false;
+      this.recordBuffer.push({
+        "ts" : Date.now(),
+        "init_p" : this.initial_p,
+        "g_const" : this.g_const
+      })
     }
   }
 
@@ -351,7 +357,9 @@ class App extends React.Component {
       <Text>
         {this.P && this.P.get([0,0])}
       </Text>
-      <Button  onPress={this.toggleRecording}  title={this.state.recordButtonText}/>
+      {this.state.step !== "Initializing" &&
+        <Button  onPress={this.toggleRecording}  title={this.state.recordButtonText}/>
+      }
       <Text></Text>
       {this.state.lastRecordFile &&
         <Button
