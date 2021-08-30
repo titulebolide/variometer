@@ -1,11 +1,12 @@
 import numpy as np
 
-def model(td,dt):
+def model(dt):
     alpha = 100/8
     beta = 2
+    kappa = 1
 
     f = lambda X,U : np.array([
-        [X[0,0] + dt*U[0,0]],
+        [X[0,0] + dt*kappa*U[0,0]],
         [X[1,0] + dt*beta*(X[2,0] - X[1,0])],
         [X[2,0] - dt*alpha*X[0,0]]
     ])
@@ -23,12 +24,12 @@ def model(td,dt):
 
     X = np.array([
         [0],
-        [84300],
-        [84300]
+        [99730],
+        [98730]
     ])
     Q = np.array([
-        [0.3,0,0],
-        [0,5,0],
+        [0.0000001,0,0],
+        [0,1.1,0],
         [0,0,1]
     ])**2
 
@@ -37,8 +38,8 @@ def model(td,dt):
         [1]
     ])**2
 
-    def get_U_Z(td):
-        return np.array([[td.az_capt]]),np.array([[td.p_capt]])
+    def get_U_Z(az, p):
+        return np.array([[az]]),np.array([[p]])
 
     return f, F, h, H, X, P, Q, R, get_U_Z
 
